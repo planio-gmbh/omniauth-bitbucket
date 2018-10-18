@@ -39,13 +39,17 @@ module OmniAuth
 
       # overrides OmniAuth::Strategies::OAuth2 to prevent using the full
       # callback_url which includes the query_string that makes bitbucket throw
-      # us an error since it's not exactly identical to the configured
-      # redirect_uri.
+      # us an error since it's not exactly identical to the previously used
+      # redirect_uri, which at most includes the login_hint parameter.
       def build_access_token
         verifier = request.params["code"]
-        # like OmniAuth::Strategy#callback_url but without query string
-        callback_url = full_host + script_name + callback_path
-        client.auth_code.get_token(verifier, {:redirect_uri => callback_url}.merge(token_params.to_hash(:symbolize_keys => true)), deep_symbolize(options.auth_token_params))
+        # remove code and state URL params from OmniAuth::Strategy#callback_url
+        redirect_uri = URI(callback_url)
+        params = Hash[URI.decode_www_form(String(redirect_uri.query))]
+        params.delete 'code'
+        params.delete 'state'
+        redirect_uri.query = params.empty? ? nil : URI.encode_www_form(params.to_a)
+        client.auth_code.get_token(verifier, {:redirect_uri => redirect_uri.to_s}.merge(token_params.to_hash(:symbolize_keys => true)), deep_symbolize(options.auth_token_params))
       end
 
     end
