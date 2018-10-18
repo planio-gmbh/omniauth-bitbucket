@@ -34,6 +34,20 @@ module OmniAuth
                         ri
                       end
       end
+
+    protected
+
+      # overrides OmniAuth::Strategies::OAuth2 to prevent using the full
+      # callback_url which includes the query_string that makes bitbucket throw
+      # us an error since it's not exactly identical to the configured
+      # redirect_uri.
+      def build_access_token
+        verifier = request.params["code"]
+        # like OmniAuth::Strategy#callback_url but without query string
+        callback_url = full_host + script_name + callback_path
+        client.auth_code.get_token(verifier, {:redirect_uri => callback_url}.merge(token_params.to_hash(:symbolize_keys => true)), deep_symbolize(options.auth_token_params))
+      end
+
     end
   end
 end
