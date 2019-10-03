@@ -20,16 +20,20 @@ module OmniAuth
 
       info do
         {
-          :name => "#{raw_info['first_name']} #{raw_info['last_name']}",
-          :avatar => raw_info['avatar'],
-          :email => raw_info['email']
+          name: raw_info['display_name'],
+          email: raw_info['email']
         }
       end
 
       def raw_info
         @raw_info ||= begin
-                        ri = MultiJson.decode(access_token.get('/api/2.0/user').body)['user']
-                        email = MultiJson.decode(access_token.get('/api/2.0/emails').body).find { |email| email['primary'] }
+                        # available keys in the returned user data:
+                        # ["username", "display_name", "has_2fa_enabled", "links", "nickname", "account_id", "created_on", "is_staff", "account_status", "type", "uuid" ]
+                        ri = MultiJson.decode(access_token.get('/api/2.0/user').body)
+
+                        # result is something like
+                        # {"pagelen"=>10, "values"=>[{"is_primary"=>true, "is_confirmed"=>true, "type"=>"email", "email"=>"jens@plan.io", "links"=>{"self"=>{"href"=>"https://bitbucket.org/!api/2.0/user/emails/jens@plan.io"}}}], "page"=>1, "size"=>1}
+                        email = MultiJson.decode(access_token.get('/api/2.0/user/emails').body)['values'].find{|m|m['is_primary']}
                         ri.merge!('email' => email['email']) if email
                         ri
                       end
